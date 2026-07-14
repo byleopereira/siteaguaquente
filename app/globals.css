@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --branco: #ffffff;
+  --nevoa: #f5f7f8;
+  --grafite: #0b0d0e;
+  --tinta: #14181a;
+  --tinta-2: #6b767b;
+  --frio: #2e7de0;
+  --morno: #f0b429;
+  --brasa: #ff6b2c;
+}
+
+html {
+  scroll-behavior: auto;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+body {
+  background: var(--branco);
+  color: var(--tinta);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--frio);
+  color: var(--branco);
+}
+
+:focus-visible {
+  outline: 2px solid var(--frio);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Indicador de scroll — linha vertical pulsando devagar */
+@keyframes aq-pulse-line {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 0.9;
+  }
+}
+
+.aq-scroll-line {
+  width: 1px;
+  height: 24px;
+  background: var(--tinta);
+  transform-origin: top;
+  animation: aq-pulse-line 2.6s ease-in-out infinite;
+}
+
+/* Vapor do finale — deriva contínua, muito leve */
+@keyframes aq-steam-drift-a {
+  0% {
+    transform: translate3d(-2%, 4%, 0) scale(1.05);
+  }
+  50% {
+    transform: translate3d(2%, -3%, 0) scale(1.12);
+  }
+  100% {
+    transform: translate3d(-2%, 4%, 0) scale(1.05);
+  }
+}
+
+@keyframes aq-steam-drift-b {
+  0% {
+    transform: translate3d(3%, 2%, 0) scale(1.15) scaleX(-1);
+  }
+  50% {
+    transform: translate3d(-2%, -4%, 0) scale(1.06) scaleX(-1);
+  }
+  100% {
+    transform: translate3d(3%, 2%, 0) scale(1.15) scaleX(-1);
+  }
+}
+
+.aq-steam-a {
+  animation: aq-steam-drift-a 26s ease-in-out infinite;
+}
+
+.aq-steam-b {
+  animation: aq-steam-drift-b 34s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aq-scroll-line,
+  .aq-steam-a,
+  .aq-steam-b {
+    animation: none;
+  }
+}
+
+/* Fade curto padrão fora do plano-sequência */
+.aq-fade-in {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.aq-fade-in.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aq-fade-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

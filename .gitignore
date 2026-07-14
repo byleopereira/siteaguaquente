@@ -1,0 +1,18 @@
+# dependências
+/node_modules
+
+# builds
+/.next
+/out
+tsconfig.tsbuildinfo
+
+# logs e SO
+*.log
+.DS_Store
+Thumbs.db
+
+# env locais
+.env*.local
+
+# artefatos de teste
+.playwright-mcp/

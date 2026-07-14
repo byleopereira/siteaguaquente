@@ -18,7 +18,19 @@ import FinaleContent from "./FinaleContent";
 import { withBase } from "@/lib/asset";
 import { WHATSAPP_CTA, clamp01, easeInOut, lerp, seq, span } from "@/lib/seq";
 
-const Scene3D = dynamic(() => import("./three/Scene3D"), { ssr: false });
+/* Import com retry: em rede instável o chunk do three.js pode falhar no
+   primeiro download — sem isso, a cena 3D some até o usuário recarregar. */
+const loadScene3D = (): Promise<typeof import("./three/Scene3D")> =>
+  import("./three/Scene3D").catch(
+    () =>
+      new Promise<typeof import("./three/Scene3D")>((resolve, reject) => {
+        setTimeout(() => {
+          import("./three/Scene3D").then(resolve, reject);
+        }, 2500);
+      })
+  );
+
+const Scene3D = dynamic(loadScene3D, { ssr: false });
 
 /** Posição do display na foto do aquecedor (frações da imagem quadrada).
  *  Medido pixel a pixel em scripts/medir-display.mjs. */
@@ -56,6 +68,8 @@ const TIMINGS = {
 
 export default function Sequence({ mode }: { mode: Mode }) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const stickyRef = useRef<HTMLDivElement>(null);
+  const canvasBoxRef = useRef<HTMLDivElement>(null);
   const heroLayerRef = useRef<HTMLDivElement>(null);
   const translateRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef<HTMLDivElement>(null);
@@ -81,8 +95,12 @@ export default function Sequence({ mode }: { mode: Mode }) {
   const lastP = useRef(0);
 
   const computeGeo = useCallback(() => {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    /* Mede o container sticky, não a window: no mobile o innerHeight muda
+       com a barra de URL e diverge do 100vh do CSS — medir o box real
+       mantém o recorte alinhado com a figura posicionada em vh. */
+    const box = stickyRef.current?.getBoundingClientRect();
+    const vw = box?.width || window.innerWidth;
+    const vh = box?.height || window.innerHeight;
     const img = imgSize(vw, vh);
     const cx = vw / 2;
     const cy = vh * FIG_CY;
@@ -144,6 +162,11 @@ export default function Sequence({ mode }: { mode: Mode }) {
       const radius = lerp(Math.min(2 * s, 24), 0, w);
       if (layerBRef.current) {
         layerBRef.current.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px round ${radius}px)`;
+      }
+
+      /* canvas pré-aquecido fica invisível no repouso — display apagado */
+      if (canvasBoxRef.current) {
+        canvasBoxRef.current.style.opacity = p < 0.005 ? "0" : "1";
       }
 
       /* hero some depois que a máscara cobre tudo */
@@ -225,8 +248,8 @@ export default function Sequence({ mode }: { mode: Mode }) {
           finaleRef.current.style.opacity = String(k);
           finaleRef.current.style.pointerEvents = k > 0.7 ? "auto" : "none";
         }
-        /* pré-aquece o canvas 3D bem antes da travessia */
-        if (p > 0.04 && !armedRef.current) {
+        /* garante o canvas montado bem antes da travessia */
+        if (p > 0.03 && !armedRef.current) {
           armedRef.current = true;
           setArmed(true);
         }
@@ -234,6 +257,20 @@ export default function Sequence({ mode }: { mode: Mode }) {
     },
     [mode]
   );
+
+  /* Pré-carrega e monta o 3D logo depois do load, sem esperar o scroll:
+     em rede lenta, esperar o scroll fazia a viagem no cano não aparecer. */
+  useEffect(() => {
+    if (mode !== "full") return;
+    const t = setTimeout(() => {
+      loadScene3D().catch(() => {});
+      if (!armedRef.current) {
+        armedRef.current = true;
+        setArmed(true);
+      }
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [mode]);
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
@@ -305,7 +342,7 @@ export default function Sequence({ mode }: { mode: Mode }) {
       style={{ height: TIMINGS[mode].height }}
       className="relative"
     >
-      <div className="sticky top-0 h-screen overflow-hidden">
+      <div ref={stickyRef} className="sticky top-0 h-screen overflow-hidden">
         {/* ---------- Camada A: o hero branco (Atos 0–2) ---------- */}
         <div ref={heroLayerRef} className="absolute inset-0 z-10 bg-branco">
           <div ref={translateRef} className="absolute inset-0 will-change-transform">
@@ -409,11 +446,11 @@ export default function Sequence({ mode }: { mode: Mode }) {
         <div
           ref={layerBRef}
           className="pointer-events-none absolute inset-0 z-20 bg-grafite"
-          style={{ clipPath: "inset(47% 47% 47% 47%)" }}
+          style={{ clipPath: "inset(50% 50% 50% 50%)" }}
           aria-hidden
         >
           {armed && mode === "full" && (
-            <div className="absolute inset-0">
+            <div ref={canvasBoxRef} className="absolute inset-0 opacity-0">
               <Scene3D />
             </div>
           )}
